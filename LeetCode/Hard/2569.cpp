@@ -14,31 +14,49 @@ inline T right(T x) {
     return (x << 1) + 1;
 }
 
-void build(ll id, ll l, ll r, const vector<T>& b) {
+void build(T id, T l, T r, const vector<T>& b) {
+    if (l > r) return;
     if (l == r) {
         tree[id] = b[l - 1];
         return;
     }
-    ll mid = (l + r) >> 1;
+    T mid = (l + r) >> 1;
     build(left(id), l, mid, b);
     build(right(id), mid + 1, r, b);
     tree[id] = tree[left(id)] + tree[right(id)];
+}
+
+void propagate(T id, T l, T r) {
+    if (!lazy[id]) return;
+    tree[id] = r - l + 1 - tree[id];
+    lazy[id] = 0;
+    if (l == r) return;
+    lazy[left(id)] = 1 - lazy[left(id)];
+    lazy[right(id)] = 1 - lazy[right(id)];
 }
 
 public:
 
 SegTree(T N, const vector<T>& b) {
     n = N;
-    tree.resize(4 * N);
+    tree.resize(4 * N, 0);
+    lazy.resize(4 * N, 0);
     build(1, 1, n, b);
 }
 
 void update(T id, T l, T r, T x, T y) {
+    propagate(id, l, r);
     if (x > r || y < l || r < l || y < x) {
         return;
     }
-    if (l >= x && r <= y) { // completely inside.
-        tree[id] = r - l + 1 - tree[id];
+    
+    if (x == l && y == r) { // completely inside.
+        // lazy[id] = 1 - lazy[id];
+        // propagate(id);
+        lazy[id] = 1 - lazy[id];
+        propagate(id, l, r);
+        // tree[id] = r - l + 1 - tree[id];
+        // cout << l << " " << r << " -- " << id << "  --- " << tree[id] << endl;
         return;
     }
     T mid = (l + r) >> 1;
@@ -54,12 +72,33 @@ void update(T id, T l, T r, T x, T y) {
     tree[id] = tree[left(id)] + tree[right(id)];
 }
 
-T getSum() const {
-    return tree[1];
+T getInternal(T id, T l, T r, T x, T y) {
+    propagate(id, l, r);
+    if (l > r || x > y || y < l || x > r) {
+        return 0;
+    }
+    
+    if (x == l && y == r) {
+        return tree[id];
+    }
+    T mid = (l + r) >> 1;
+    if (x > mid) {
+        return getInternal(right(id), mid + 1, r, x, y);
+    } else if (y < mid) {
+        return getInternal(left(id), l, mid, x, y);
+    } else {
+        return getInternal(left(id), l , mid, x, mid) + 
+        getInternal(right(id), mid + 1, r, mid+1, y);
+    }
+}
+
+T getSum() {
+    return getInternal(1, 1, n, 1, n);
 }
 private:
 T n;
 vector<T> tree;
+vector<T> lazy;
 };
 
 
@@ -85,7 +124,7 @@ public:
                 sum += L * S.getSum();
             } else {
                 S.update(1, 1, n, L + 1, R + 1);
-                // cout << S.getSum() << endl;
+                cout << S.getSum() << endl;
             }
         }
         return ret;
